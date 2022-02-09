@@ -1,0 +1,1 @@
+linux-env/bin/python -m grpc_tools.protoc -I./proto --python_out=image --grpc_python_out=image proto/image.proto
