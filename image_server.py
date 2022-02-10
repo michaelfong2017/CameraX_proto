@@ -22,7 +22,7 @@ class ShowVideoStream:
     thread = futures.ThreadPoolExecutor(max_workers=1)
 
     def start(self):
-        self.thread.submit(self.show_image)
+        self.show_image()
 
     def set(self, image):
         self.image = image
@@ -47,13 +47,17 @@ class ImageServiceServer(rpc.ImageServiceServicer):  # inheriting here from the 
 
     def Upload(self, request_iterator, context):
         for request in request_iterator:
-            if request.StatusCode == service.ImageUploadStatusCode.InProgress:
-                logging.info(f'> {request.Id} - receiving image')
+            if request.WhichOneof("payload") == "metadata":
+                self.id = request.metadata.id
+                self.image_format = request.metadata.image_format
+
+            elif request.WhichOneof("payload") == "image":
+                logging.info(f'> Receiving image with metadata {{id: {self.id}, image_format: {self.image_format}}}')
 
                 # Image = Image.open(io.BytesIO(request.Content))
                 # image.save(f"{round(time.time() * 1000)}.png")
 
-                img_stream = io.BytesIO(request.Content)
+                img_stream = io.BytesIO(request.image)
                 '''
                 Use cv2.IMREAD_UNCHANGED for png since there are 4 channels.
                 Use cv2.IMREAD_COLOR otherwise.
@@ -85,26 +89,14 @@ class ImageServiceServer(rpc.ImageServiceServicer):  # inheriting here from the 
 
                 show.set(image)
 
-                result = service.ImageUploadResponse(Id=request.Id, StatusCode=service.ImageUploadStatusCode.Ok, Message="image uploaded")
-                return result
-            #     self.images[request.Id].write(request.Content)
-            #     result = service.ImageUploadResponse(Id=request.Id, StatusCode=service.ImageUploadStatusCode.Ok, Message='waiting for more')
-
-            # if request.StatusCode == service.ImageUploadStatusCode.Ok and not request.Content:
-            #     logging.info('transfer completed!')
-            #     logging.info(f'> {request.Id} - sending image')
-            #     image = self.images[request.Id].getvalue()
-                
-            #     print(image)
-
-            #     result = service.ImageUploadResponse(Id=request.Id, StatusCode=service.ImageUploadStatusCode.Ok, Message=response.text.encode('utf8'))
-            #     return result
+                result = service.ImageUploadResponse(id=self.id, status=service.UploadStatus.OK)
+                yield result
 
 
 show = ShowVideoStream()
 
 def serve():
-    port = 22222
+    port = 50051
     grpc_server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     rpc.add_ImageServiceServicer_to_server(ImageServiceServer(), grpc_server)
     logging.info(f'Starting server. Listening at {port}...')
@@ -121,3 +113,5 @@ if __name__ == '__main__':
 
     show.start()
     
+
+cv2.destroyAllWindows()

@@ -14,7 +14,7 @@ class ImageServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.Upload = channel.stream_unary(
+        self.Upload = channel.stream_stream(
                 '/image.ImageService/Upload',
                 request_serializer=image__pb2.ImageUploadRequest.SerializeToString,
                 response_deserializer=image__pb2.ImageUploadResponse.FromString,
@@ -33,7 +33,7 @@ class ImageServiceServicer(object):
 
 def add_ImageServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'Upload': grpc.stream_unary_rpc_method_handler(
+            'Upload': grpc.stream_stream_rpc_method_handler(
                     servicer.Upload,
                     request_deserializer=image__pb2.ImageUploadRequest.FromString,
                     response_serializer=image__pb2.ImageUploadResponse.SerializeToString,
@@ -59,7 +59,7 @@ class ImageService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.stream_unary(request_iterator, target, '/image.ImageService/Upload',
+        return grpc.experimental.stream_stream(request_iterator, target, '/image.ImageService/Upload',
             image__pb2.ImageUploadRequest.SerializeToString,
             image__pb2.ImageUploadResponse.FromString,
             options, channel_credentials,
